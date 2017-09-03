@@ -1,0 +1,23 @@
+-main ApplicationMain 
+--macro openfl._internal.utils.ExtraParams.include()
+-cp C:/alexey/apps/haxe/lib/openfl/6,1,0
+-D openfl=6.1.0
+--macro lime.Lib.extraParams()
+-cp C:/alexey/apps/haxe/lib/lime/5,4,0
+-D lime=5.4.0
+-cp src
+-D tools=5.4.0
+-D howlerjs
+-D no-compilation
+-D lime-opengl
+-D openfl-html5
+-D lime-html5
+-D debug
+-D verbose=1
+-D html5
+-D web
+--remap flash:openfl
+-js bin/html5/bin/lines.js
+-cp bin/html5/haxe
+-D html5
+-debug
