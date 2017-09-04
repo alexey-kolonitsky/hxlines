@@ -8,87 +8,6 @@ function $extend(from, fields) {
 	if( fields.toString !== Object.prototype.toString ) proto.toString = fields.toString;
 	return proto;
 }
-var AppController = function(view) {
-	this._gameView = view;
-	this._gameView.gameScreen.addEventListener(events_GameEvent.MENU,$bind(this,this.game_menuHandler));
-	this._gameView.menuScreen.addEventListener(events_GameEvent.CREATE,$bind(this,this.menu_createGameHandler));
-	this._gameView.menuScreen.addEventListener(events_GameEvent.START,$bind(this,this.menu_startGameHandler));
-	this._gameView.menuScreen.addEventListener(events_GameEvent.RESULT,$bind(this,this.menu_resultHandler));
-	this._gameView.menuScreen.addEventListener(events_GameEvent.SAVE_RESULT,$bind(this,this.menu_saveResultHandler));
-	this._gameLoop = new GameLoop();
-	this._gameLoop.start();
-};
-$hxClasses["AppController"] = AppController;
-AppController.__name__ = ["AppController"];
-AppController.prototype = {
-	_gameLoop: null
-	,_game: null
-	,_gameView: null
-	,newGame: function() {
-		if(this._game == null) {
-			this._game = new GameController(this.createGameSession(),this._gameView.gameScreen);
-		}
-	}
-	,playGame: function() {
-		if(this._game != null) {
-			this._game.set_state(GameState.PLAY);
-			this._gameLoop.add(this._game);
-		}
-	}
-	,pauseGame: function() {
-		if(this._game != null) {
-			this._game.set_state(GameState.PAUSE);
-			this._gameLoop.remove(this._game);
-		}
-	}
-	,stopGame: function() {
-		if(this._game != null) {
-			this._game.dispose();
-		}
-	}
-	,showMenu: function() {
-		this._gameView.showMenu();
-	}
-	,hideMenu: function() {
-		this._gameView.hideMenu();
-	}
-	,createGameSession: function() {
-		var gameData = new model_GameData();
-		gameData.sessionId = Std.string(Math.random() * 1000);
-		var _g = [];
-		var _g2 = 0;
-		var _g1 = config_StaticConfig.BOARD_CELLS;
-		while(_g2 < _g1) {
-			var i = _g2++;
-			_g.push(0);
-		}
-		gameData.fields = _g;
-		return gameData;
-	}
-	,game_menuHandler: function(event) {
-		this.pauseGame();
-		this.showMenu();
-	}
-	,menu_createGameHandler: function(event) {
-		this.hideMenu();
-		this.stopGame();
-		this.newGame();
-		this.playGame();
-	}
-	,menu_startGameHandler: function(event) {
-		this.hideMenu();
-		this.playGame();
-	}
-	,menu_resultHandler: function(event) {
-		this.stopGame();
-		this.showMenu();
-	}
-	,menu_saveResultHandler: function(event) {
-		this.showMenu();
-		this.stopGame();
-	}
-	,__class__: AppController
-};
 var lime_app_IModule = function() { };
 $hxClasses["lime.app.IModule"] = lime_app_IModule;
 lime_app_IModule.__name__ = ["lime","app","IModule"];
@@ -1099,7 +1018,7 @@ $hxClasses["ApplicationMain"] = ApplicationMain;
 ApplicationMain.__name__ = ["ApplicationMain"];
 ApplicationMain.main = function() {
 	var projectName = "lines";
-	var config = { build : "84", company : "My Company", file : "lines", fps : 60, name : "Lines", orientation : "", packageName : "com.mycompany.myproject", version : "1.0.0", windows : [{ allowHighDPI : false, alwaysOnTop : false, antialiasing : 0, background : 3355443, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : true, height : 500, hidden : null, maximized : null, minimized : null, parameters : { }, resizable : true, stencilBuffer : true, title : "Lines", vsync : false, width : 500, x : null, y : null}]};
+	var config = { build : "1", company : "My Company", file : "lines", fps : 60, name : "Lines", orientation : "", packageName : "com.mycompany.myproject", version : "1.0.0", windows : [{ allowHighDPI : false, alwaysOnTop : false, antialiasing : 0, background : 3355443, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : true, height : 565, hidden : null, maximized : null, minimized : null, parameters : { }, resizable : true, stencilBuffer : true, title : "Lines", vsync : false, width : 500, x : null, y : null}]};
 	lime_system_System.__registerEntryPoint(projectName,ApplicationMain.create,config);
 };
 ApplicationMain.create = function(config) {
@@ -3246,12 +3165,10 @@ Game.prototype = $extend(openfl_display_Sprite.prototype,{
 		if(this._inited) {
 			return;
 		}
-		this._view = new GameView();
+		this._view = new view_GameView();
 		this.addChild(this._view);
-		this._controller = new AppController(this._view);
-		this._controller.hideMenu();
-		this._controller.newGame();
-		this._controller.playGame();
+		this._controller = new controller_AppController(this._view);
+		this._controller.newGameMenu();
 	}
 	,__class__: Game
 });
@@ -3358,379 +3275,6 @@ EReg.prototype = {
 	}
 	,__class__: EReg
 };
-var IGameLoopHandler = function() { };
-$hxClasses["IGameLoopHandler"] = IGameLoopHandler;
-IGameLoopHandler.__name__ = ["IGameLoopHandler"];
-IGameLoopHandler.prototype = {
-	update: null
-	,__class__: IGameLoopHandler
-};
-var GameController = function(gameData,gameRenderer) {
-	this._distance = null;
-	this._freeFieldIndex = null;
-	this._game = gameData;
-	this._view = gameRenderer;
-	this._view.addEventListener(events_GameEvent.MOVE,$bind(this,this.view_moveHandler));
-	this._view.addEventListener(events_GameEvent.SELECT,$bind(this,this.view_selectHandler));
-	this._view.addEventListener(events_GameEvent.PATH,$bind(this,this.view_pathHandler));
-	this.initFreeCells();
-	if(this._freeFieldIndex.length == this._game.fields.length) {
-		this.addRandomChips();
-	}
-};
-$hxClasses["GameController"] = GameController;
-GameController.__name__ = ["GameController"];
-GameController.__interfaces__ = [IGameLoopHandler];
-GameController.shuffle = function(source) {
-	if(source == null) {
-		return;
-	}
-	var n = source.length;
-	if(n < 2) {
-		return;
-	}
-	var _g1 = 0;
-	var _g = n;
-	while(_g1 < _g) {
-		var i = _g1++;
-		var randomIndex = Math.floor(Math.random() * n);
-		var tmp = source[i];
-		source[i] = source[randomIndex];
-		source[randomIndex] = tmp;
-	}
-};
-GameController.prototype = {
-	get_state: function() {
-		if(this._game != null) {
-			return this._game.state;
-		}
-		return GameState.NONE;
-	}
-	,set_state: function(value) {
-		if(this._game != null) {
-			return this._game.state = value;
-		} else {
-			throw new js__$Boot_HaxeError("Game object is not defined. Failure access to Access to state field is failure.");
-		}
-	}
-	,get_startIndex: function() {
-		if(this._game != null) {
-			return this._game.startIndex;
-		}
-		return -1;
-	}
-	,set_startIndex: function(value) {
-		if(value < 0 || value > config_StaticConfig.BOARD_CELLS) {
-			return -1;
-		}
-		if(this._game != null) {
-			this._game.startIndex = value;
-			this._game.path = null;
-			this._distance = controller_BreadthFirst.bfs(this._game.fields,this._game.startIndex,this._game.startIndex,$bind(this,this.getAvailableNeighbors));
-			return this._game.startIndex;
-		}
-		return -1;
-	}
-	,get_endIndex: function() {
-		if(this._game != null) {
-			return this._game.endIndex;
-		}
-		return -1;
-	}
-	,set_endIndex: function(value) {
-		if(value < 0 || value > config_StaticConfig.BOARD_CELLS) {
-			return -1;
-		}
-		if(this._game != null && this.get_startIndex() != -1 && this._distance[value] < config_StaticConfig.BOARD_CELLS) {
-			this._game.endIndex = value;
-			this._game.path = controller_BreadthFirst.bfsPath(this._game.fields,this._distance,this._game.startIndex,this._game.endIndex,$bind(this,this.getAvailableNeighbors));
-			return this._game.endIndex;
-		}
-		return -1;
-	}
-	,get_duration: function() {
-		if(this._game != null) {
-			return this._game.duration;
-		}
-		return 0;
-	}
-	,dispose: function() {
-		this._game = null;
-		this._view.removeEventListener(events_GameEvent.MOVE,$bind(this,this.view_moveHandler));
-		this._view.removeEventListener(events_GameEvent.SELECT,$bind(this,this.view_selectHandler));
-		this._view.removeEventListener(events_GameEvent.PATH,$bind(this,this.view_pathHandler));
-		this._view = null;
-	}
-	,view_moveHandler: function(event) {
-		this.moveTo(event.index);
-	}
-	,view_selectHandler: function(event) {
-		this.set_startIndex(event.index);
-	}
-	,view_pathHandler: function(event) {
-		this.set_endIndex(event.index);
-	}
-	,initFreeCells: function() {
-		this._freeFieldIndex = [];
-		var _g1 = 0;
-		var _g = this._game.fields.length;
-		while(_g1 < _g) {
-			var i = _g1++;
-			if(this._game.fields[i] == 0) {
-				this._freeFieldIndex.push(i);
-			}
-		}
-		GameController.shuffle(this._freeFieldIndex);
-	}
-	,moveTo: function(index) {
-		if(this._game.fields[index] != 0) {
-			haxe_Log.trace("INFO: Change chip.",{ fileName : "GameController.hx", lineNumber : 163, className : "GameController", methodName : "moveTo"});
-			this.set_startIndex(index);
-			return;
-		}
-		if(this._distance[index] > config_StaticConfig.BOARD_CELLS) {
-			haxe_Log.trace("INFO: Distance is unavailable",{ fileName : "GameController.hx", lineNumber : 170, className : "GameController", methodName : "moveTo"});
-			return;
-		}
-		var i = this._freeFieldIndex.indexOf(index);
-		this._freeFieldIndex[i] = this.get_startIndex();
-		this._game.fields[index] = this._game.fields[this._game.startIndex];
-		this._game.fields[this._game.startIndex] = config_StaticConfig.EMPTY_CELL_CODE;
-		this._game.startIndex = -1;
-		this._game.endIndex = -1;
-		this._game.path = null;
-		var newChips = [index];
-		if(this.removeLines(newChips) == false) {
-			if(this._freeFieldIndex.length < config_StaticConfig.TURN_CHIP_NUMBER) {
-				this._game.state = GameState.COMPLETE;
-			} else {
-				newChips = this.addRandomChips();
-				this.removeLines(newChips);
-			}
-		}
-	}
-	,update: function(time,deltaTime) {
-		if(this._game.state == GameState.PLAY) {
-			this._game.duration += deltaTime;
-		}
-		this._view.render(this._game);
-		if(this._game.state == GameState.PLAY && this._freeFieldIndex.length <= config_StaticConfig.TURN_CHIP_NUMBER) {
-			this.set_state(GameState.COMPLETE);
-		}
-	}
-	,_game: null
-	,_view: null
-	,_freeFieldIndex: null
-	,_distance: null
-	,addRandomChips: function() {
-		var chipColor = 1;
-		var _g1 = 0;
-		var _g = config_StaticConfig.TURN_CHIP_NUMBER;
-		while(_g1 < _g) {
-			var i = _g1++;
-			chipColor = 1 + Math.floor(Math.random() * (config_StaticConfig.START_COLOR_COUNT + this._game.level));
-			this._game.fields[this._freeFieldIndex[i]] = chipColor;
-		}
-		return this._freeFieldIndex.splice(0,config_StaticConfig.TURN_CHIP_NUMBER);
-	}
-	,removeChips: function(line) {
-		var _g = 0;
-		while(_g < line.length) {
-			var index = line[_g];
-			++_g;
-			this._game.fields[index] = 0;
-			this._freeFieldIndex.push(index);
-		}
-	}
-	,removeLines: function(startIndxes) {
-		var line;
-		var result = false;
-		var _g = 0;
-		while(_g < startIndxes.length) {
-			var start = startIndxes[_g];
-			++_g;
-			var colIndex = start % config_StaticConfig.BOARD_WIDTH;
-			var rowIndex = Math.floor((start - colIndex) / config_StaticConfig.BOARD_WIDTH);
-			var chipType = this._game.fields[start];
-			line = this.findLine(colIndex,0,0,1,chipType);
-			if(!result) {
-				result = this.removeLine(line);
-			} else {
-				result = true;
-			}
-			line = this.findLine(0,rowIndex,1,0,chipType);
-			if(!result) {
-				result = this.removeLine(line);
-			} else {
-				result = true;
-			}
-			var d = rowIndex < colIndex ? rowIndex : colIndex;
-			line = this.findLine(colIndex - d,rowIndex - d,1,1,chipType);
-			if(!result) {
-				result = this.removeLine(line);
-			} else {
-				result = true;
-			}
-			var right = config_StaticConfig.BOARD_WIDTH - 1 - colIndex;
-			if(rowIndex < right) {
-				d = rowIndex;
-			} else {
-				d = right;
-			}
-			line = this.findLine(colIndex + d,rowIndex - d,-1,1,chipType);
-			if(!result) {
-				result = this.removeLine(line);
-			} else {
-				result = true;
-			}
-		}
-		return result;
-	}
-	,removeLine: function(line) {
-		if(line.length >= config_StaticConfig.LINE_LENGTH) {
-			this.removeChips(line);
-			this._game.score += line.length * this._game.level;
-			this.updateLevel();
-			return true;
-		}
-		return false;
-	}
-	,updateLevel: function() {
-		if(this._game.score <= config_StaticConfig.LEVEL1_SCORE) {
-			this._game.level = 1;
-		} else if(this._game.score <= config_StaticConfig.LEVEL2_SCORE) {
-			this._game.level = 2;
-		} else if(this._game.score <= config_StaticConfig.LEVEL3_SCORE) {
-			this._game.level = 3;
-		} else if(this._game.score <= config_StaticConfig.LEVEL4_SCORE) {
-			this._game.level = 4;
-		} else {
-			this._game.level = 5;
-		}
-	}
-	,findLine: function(colStartIndex,rowStartIndex,colIncrement,rowIncrement,chipType) {
-		var result = [];
-		var colIndex = colStartIndex;
-		var rowIndex = rowStartIndex;
-		var index = 0;
-		while(colIndex < config_StaticConfig.BOARD_WIDTH && rowIndex < config_StaticConfig.BOARD_HEIGHT && colIndex >= 0 && rowIndex >= 0) {
-			index = rowIndex * config_StaticConfig.BOARD_WIDTH + colIndex;
-			if(this._game.fields[index] == chipType) {
-				result.push(index);
-			} else {
-				if(result.length >= config_StaticConfig.LINE_LENGTH) {
-					break;
-				}
-				result = [];
-			}
-			colIndex += colIncrement;
-			rowIndex += rowIncrement;
-		}
-		return result;
-	}
-	,valueAt: function(colIndex,rowIndex) {
-		var index = rowIndex * config_StaticConfig.BOARD_WIDTH + colIndex;
-		return this._game.fields[index];
-	}
-	,getAvailableNeighbors: function(source,index) {
-		var result = [];
-		var emptyChipType = config_StaticConfig.EMPTY_CELL_CODE;
-		var colIndex = index % config_StaticConfig.BOARD_WIDTH;
-		var rowIndex = Math.floor((index - colIndex) / config_StaticConfig.BOARD_WIDTH);
-		if(rowIndex != 0 && this.valueAt(colIndex,rowIndex - 1) == emptyChipType) {
-			result.push(index - config_StaticConfig.BOARD_WIDTH);
-		}
-		if(colIndex != config_StaticConfig.BOARD_WIDTH - 1 && this.valueAt(colIndex + 1,rowIndex) == emptyChipType) {
-			result.push(index + 1);
-		}
-		if(rowIndex != config_StaticConfig.BOARD_HEIGHT - 1 && this.valueAt(colIndex,rowIndex + 1) == emptyChipType) {
-			result.push(index + config_StaticConfig.BOARD_WIDTH);
-		}
-		if(colIndex != 0 && this.valueAt(colIndex - 1,rowIndex) == emptyChipType) {
-			result.push(index - 1);
-		}
-		return result;
-	}
-	,isGameEmpty: function() {
-		return this._game.duration > 0;
-	}
-	,__class__: GameController
-};
-var GameLoop = function() {
-	this.lastUpdateTime = -1;
-	this._invalidated = false;
-	this._handlers = [];
-	this._timer = new haxe_Timer(250);
-};
-$hxClasses["GameLoop"] = GameLoop;
-GameLoop.__name__ = ["GameLoop"];
-GameLoop.prototype = {
-	_handlers: null
-	,_timer: null
-	,_invalidated: null
-	,lastUpdateTime: null
-	,start: function() {
-		this._timer.run = $bind(this,this.timerHandler);
-	}
-	,stop: function() {
-		this._timer.stop();
-	}
-	,add: function(handler) {
-		this._handlers.push(handler);
-	}
-	,remove: function(handler) {
-		HxOverrides.remove(this._handlers,handler);
-	}
-	,timerHandler: function() {
-		var _g = 0;
-		var _g1 = this._handlers;
-		while(_g < _g1.length) {
-			var handler = _g1[_g];
-			++_g;
-			var time = new Date().getTime();
-			var diff = this.lastUpdateTime != -1 ? time - this.lastUpdateTime : 0;
-			handler.update(time,diff);
-		}
-	}
-	,__class__: GameLoop
-};
-var GameState = $hxClasses["GameState"] = { __ename__ : ["GameState"], __constructs__ : ["NONE","PLAY","WAIT","PAUSE","COMPLETE"] };
-GameState.NONE = ["NONE",0];
-GameState.NONE.toString = $estr;
-GameState.NONE.__enum__ = GameState;
-GameState.PLAY = ["PLAY",1];
-GameState.PLAY.toString = $estr;
-GameState.PLAY.__enum__ = GameState;
-GameState.WAIT = ["WAIT",2];
-GameState.WAIT.toString = $estr;
-GameState.WAIT.__enum__ = GameState;
-GameState.PAUSE = ["PAUSE",3];
-GameState.PAUSE.toString = $estr;
-GameState.PAUSE.__enum__ = GameState;
-GameState.COMPLETE = ["COMPLETE",4];
-GameState.COMPLETE.toString = $estr;
-GameState.COMPLETE.__enum__ = GameState;
-var GameView = function() {
-	this.menuScreen = new view_MenuScreen();
-	this.gameScreen = new view_GameScreen();
-	openfl_display_Sprite.call(this);
-	this.addChild(this.gameScreen);
-	this.addChild(this.menuScreen);
-};
-$hxClasses["GameView"] = GameView;
-GameView.__name__ = ["GameView"];
-GameView.__super__ = openfl_display_Sprite;
-GameView.prototype = $extend(openfl_display_Sprite.prototype,{
-	gameScreen: null
-	,menuScreen: null
-	,showMenu: function() {
-		this.menuScreen.set_visible(true);
-	}
-	,hideMenu: function() {
-		this.menuScreen.set_visible(false);
-	}
-	,__class__: GameView
-});
 var HxOverrides = function() { };
 $hxClasses["HxOverrides"] = HxOverrides;
 HxOverrides.__name__ = ["HxOverrides"];
@@ -3910,7 +3454,7 @@ ManifestResources.init = function(config) {
 	var data;
 	var manifest;
 	var library;
-	data = "{\"name\":null,\"assets\":\"aoy4:pathy33:resources%2Fbackground-result.pngy4:sizei79495y4:typey5:IMAGEy2:idR1y7:preloadtgoR0y26:resources%2Fbackground.pngR2i28286R3R4R5R7R6tgoR0y27:resources%2FbtnContinue.pngR2i4271R3R4R5R8R6tgoR0y31:resources%2FbtnContinueGame.pngR2i7409R3R4R5R9R6tgoR0y28:resources%2FbtnHighscore.pngR2i3872R3R4R5R10R6tgoR0y23:resources%2FbtnMenu.pngR2i1710R3R4R5R11R6tgoR0y26:resources%2FbtnNewGame.pngR2i6557R3R4R5R12R6tgoR0y26:resources%2FbtnRestart.pngR2i4134R3R4R5R13R6tgoR0y21:resources%2Fchips.pngR2i10669R3R4R5R14R6tgoR0y25:resources%2FiconScore.pngR2i664R3R4R5R15R6tgoR0y24:resources%2FiconTime.pngR2i906R3R4R5R16R6tgoR0y25:resources%2FleadBoard.pngR2i18864R3R4R5R17R6tgh\",\"version\":2,\"libraryArgs\":[],\"libraryType\":null}";
+	data = "{\"name\":null,\"assets\":\"aoy4:pathy33:resources%2Fbackground-result.pngy4:sizei79495y4:typey5:IMAGEy2:idR1y7:preloadtgoR0y26:resources%2Fbackground.pngR2i28286R3R4R5R7R6tgoR0y27:resources%2FbtnContinue.pngR2i4271R3R4R5R8R6tgoR0y31:resources%2FbtnContinueGame.pngR2i7409R3R4R5R9R6tgoR0y28:resources%2FbtnHighscore.pngR2i3872R3R4R5R10R6tgoR0y23:resources%2FbtnMenu.pngR2i1710R3R4R5R11R6tgoR0y26:resources%2FbtnNewGame.pngR2i6557R3R4R5R12R6tgoR0y27:resources%2FbtnPlayGame.pngR2i7027R3R4R5R13R6tgoR0y26:resources%2FbtnRestart.pngR2i4134R3R4R5R14R6tgoR0y21:resources%2Fchips.pngR2i10694R3R4R5R15R6tgoR0y25:resources%2FiconScore.pngR2i664R3R4R5R16R6tgoR0y24:resources%2FiconTime.pngR2i906R3R4R5R17R6tgoR0y25:resources%2FleadBoard.pngR2i18864R3R4R5R18R6tgoR0y29:resources%2FpopupGameOver.pngR2i14256R3R4R5R19R6tgh\",\"version\":2,\"libraryArgs\":[],\"libraryType\":null}";
 	manifest = lime_utils_AssetManifest.parse(data,rootPath);
 	library = lime_utils_AssetLibrary.fromManifest(manifest);
 	lime_utils_Assets.registerLibrary("default",library);
@@ -4275,6 +3819,9 @@ _$UInt_UInt_$Impl_$.toFloat = function(this1) {
 var assets_GameAssets = function() { };
 $hxClasses["assets.GameAssets"] = assets_GameAssets;
 assets_GameAssets.__name__ = ["assets","GameAssets"];
+assets_GameAssets.get_BTN_START_BITMAP = function() {
+	return openfl_utils_Assets.getBitmapData("resources/btnPlayGame.png");
+};
 assets_GameAssets.get_BTN_RESTART_BITMAP = function() {
 	return openfl_utils_Assets.getBitmapData("resources/btnNewGame.png");
 };
@@ -4302,6 +3849,9 @@ assets_GameAssets.get_LEADBOARD_BITMAP = function() {
 assets_GameAssets.get_CHIPS_BITMAP = function() {
 	return openfl_utils_Assets.getBitmapData("resources/chips.png");
 };
+assets_GameAssets.get_GAME_OVER_POPUP = function() {
+	return openfl_utils_Assets.getBitmapData("resources/popupGameOver.png");
+};
 var config_StaticConfig = function() { };
 $hxClasses["config.StaticConfig"] = config_StaticConfig;
 config_StaticConfig.__name__ = ["config","StaticConfig"];
@@ -4311,10 +3861,527 @@ config_StaticConfig.get_sourceCodeURL = function() {
 config_StaticConfig.get_leadBoardURL = function() {
 	return config_StaticConfig._leadBoardURL;
 };
-var controller_BreadthFirst = function() { };
-$hxClasses["controller.BreadthFirst"] = controller_BreadthFirst;
-controller_BreadthFirst.__name__ = ["controller","BreadthFirst"];
-controller_BreadthFirst.bfs = function(source,startIndex,endIndex,getNeighburs) {
+var controller_AppController = function(view) {
+	this._gameView = view;
+	this._gameView.gameScreen.addEventListener(events_GameEvent.MENU,$bind(this,this.eventHandler));
+	this._gameView.gameScreen.addEventListener(events_GameEvent.GAME_OVER,$bind(this,this.eventHandler));
+	this._gameView.menuScreen.addEventListener(events_GameEvent.CREATE,$bind(this,this.eventHandler));
+	this._gameView.menuScreen.addEventListener(events_GameEvent.START,$bind(this,this.eventHandler));
+	this._gameLoop = new core_GameLoop();
+	this._gameLoop.start();
+};
+$hxClasses["controller.AppController"] = controller_AppController;
+controller_AppController.__name__ = ["controller","AppController"];
+controller_AppController.prototype = {
+	_gameLoop: null
+	,_game: null
+	,_gameView: null
+	,newGame: function() {
+		if(this._game == null) {
+			this._game = new controller_GameController(this.createGameSession(),this._gameView.gameScreen);
+		}
+	}
+	,playGame: function() {
+		if(this._game != null) {
+			this._game.set_state(model_GameState.PLAY);
+			this._gameLoop.add(this._game);
+		}
+	}
+	,pauseGame: function() {
+		if(this._game != null) {
+			this._game.set_state(model_GameState.PAUSE);
+			this._gameLoop.remove(this._game);
+		}
+	}
+	,stopGame: function() {
+		if(this._game != null) {
+			this._gameLoop.remove(this._game);
+			this._game.dispose();
+			this._game = null;
+		}
+	}
+	,newGameMenu: function() {
+		this._gameView.showMenu(false);
+	}
+	,showMenu: function() {
+		this._gameView.showMenu(true);
+	}
+	,hideMenu: function() {
+		this._gameView.hideMenu();
+	}
+	,createGameSession: function() {
+		var gameData = new model_GameData();
+		gameData.sessionId = Std.string(Math.random() * 1000);
+		var _g = [];
+		var _g2 = 0;
+		var _g1 = config_StaticConfig.BOARD_CELLS;
+		while(_g2 < _g1) {
+			var i = _g2++;
+			_g.push(config_StaticConfig.EMPTY_CELL_CODE);
+		}
+		gameData.fields = _g;
+		return gameData;
+	}
+	,eventHandler: function(event) {
+		var _g = event.type;
+		switch(_g) {
+		case events_GameEvent.CREATE:
+			this.stopGame();
+			this.newGame();
+			this.hideMenu();
+			this.playGame();
+			break;
+		case events_GameEvent.GAME_OVER:
+			this.stopGame();
+			this.newGameMenu();
+			break;
+		case events_GameEvent.MENU:
+			this.pauseGame();
+			this.showMenu();
+			break;
+		case events_GameEvent.START:
+			this.hideMenu();
+			this.playGame();
+			break;
+		}
+	}
+	,__class__: controller_AppController
+};
+var core_IGameLoopHandler = function() { };
+$hxClasses["core.IGameLoopHandler"] = core_IGameLoopHandler;
+core_IGameLoopHandler.__name__ = ["core","IGameLoopHandler"];
+core_IGameLoopHandler.prototype = {
+	update: null
+	,__class__: core_IGameLoopHandler
+};
+var controller_GameController = function(gameData,gameRenderer) {
+	this._game = gameData;
+	this._view = gameRenderer;
+	this._view.addEventListener(events_GameEvent.MOVE,$bind(this,this.view_moveHandler));
+	this._view.addEventListener(events_GameEvent.PATH,$bind(this,this.view_pathHandler));
+	this._gameField = new core_GameField(gameData.fields);
+	var _g = [];
+	var _g2 = 0;
+	var _g1 = config_StaticConfig.START_COLOR_COUNT;
+	while(_g2 < _g1) {
+		var i = _g2++;
+		_g.push(i + 1);
+	}
+	this._gameField.fieldValues = _g;
+	if(this._gameField.isEmpty()) {
+		this._gameField.addRandomValues();
+	}
+};
+$hxClasses["controller.GameController"] = controller_GameController;
+controller_GameController.__name__ = ["controller","GameController"];
+controller_GameController.__interfaces__ = [core_IGameLoopHandler];
+controller_GameController.prototype = {
+	get_state: function() {
+		if(this._game != null) {
+			return this._game.state;
+		}
+		return model_GameState.NONE;
+	}
+	,set_state: function(value) {
+		if(this._game != null) {
+			return this._game.state = value;
+		} else {
+			throw new js__$Boot_HaxeError("Game object is not defined. Failure access to Access to state field is failure.");
+		}
+	}
+	,get_duration: function() {
+		if(this._game != null) {
+			return this._game.duration;
+		}
+		return 0;
+	}
+	,dispose: function() {
+		this._game = null;
+		this._gameField = null;
+		this._view.removeEventListener(events_GameEvent.MOVE,$bind(this,this.view_moveHandler));
+		this._view.removeEventListener(events_GameEvent.PATH,$bind(this,this.view_pathHandler));
+		this._view = null;
+	}
+	,view_moveHandler: function(event) {
+		var isMoved = false;
+		if(this._game.startIndex == event.index) {
+			this._gameField.clearStartIndex();
+		} else {
+			isMoved = this._gameField.move(event.index);
+		}
+		this._game.startIndex = this._gameField.get_startIndex();
+		this._game.endIndex = this._gameField.get_endIndex();
+		this._game.path = this._gameField.get_path();
+		if(isMoved) {
+			var lines = this._gameField.findCompleteLines(event.index);
+			this.removeLines(lines);
+			if(this._gameField.isFull()) {
+				this.set_state(model_GameState.GAME_OVER);
+			} else {
+				var positions = this._gameField.addRandomValues();
+				var _g = 0;
+				while(_g < positions.length) {
+					var position = positions[_g];
+					++_g;
+					var lines1 = this._gameField.findCompleteLines(position);
+					this.removeLines(lines1);
+				}
+			}
+		}
+	}
+	,removeLines: function(lines) {
+		var _g = 0;
+		while(_g < lines.length) {
+			var line = lines[_g];
+			++_g;
+			this.removeLine(line);
+		}
+	}
+	,removeLine: function(line) {
+		this._gameField.removeLine(line);
+		this._game.score += line.length * this._game.level;
+		this.updateLevel();
+	}
+	,view_pathHandler: function(event) {
+		this._game.endIndex = this._gameField.set_endIndex(event.index);
+		this._game.path = this._gameField.get_path();
+	}
+	,update: function(time,deltaTime) {
+		if(this._game == null) {
+			return;
+		}
+		if(this.get_state() == model_GameState.PLAY) {
+			haxe_Log.trace("update. deltaTime=" + view_TimeFormatter.format(deltaTime),{ fileName : "GameController.hx", lineNumber : 130, className : "controller.GameController", methodName : "update"});
+			this._game.duration += deltaTime;
+			if(this._gameField.isFull()) {
+				this.set_state(model_GameState.GAME_OVER);
+			}
+		}
+		this._view.render(this._game);
+	}
+	,_game: null
+	,_view: null
+	,_gameField: null
+	,updateLevel: function() {
+		var level;
+		if(this._game.score <= config_StaticConfig.LEVEL1_SCORE) {
+			level = 1;
+		} else if(this._game.score <= config_StaticConfig.LEVEL2_SCORE) {
+			level = 2;
+		} else if(this._game.score <= config_StaticConfig.LEVEL3_SCORE) {
+			level = 3;
+		} else if(this._game.score <= config_StaticConfig.LEVEL4_SCORE) {
+			level = 4;
+		} else {
+			level = 5;
+		}
+		if(level != this._game.level) {
+			this._game.level = level;
+			var _g = [];
+			var _g2 = 0;
+			var _g1 = config_StaticConfig.START_COLOR_COUNT + level;
+			while(_g2 < _g1) {
+				var i = _g2++;
+				_g.push(i + 1);
+			}
+			this._gameField.fieldValues = _g;
+		}
+	}
+	,isGameEmpty: function() {
+		return this._game.duration > 0;
+	}
+	,__class__: controller_GameController
+};
+var core_GameField = function(gameFilds) {
+	this._endIndex = -1;
+	this._startIndex = -1;
+	this._emptyFieldValue = config_StaticConfig.EMPTY_CELL_CODE;
+	this._fieldsNumber = config_StaticConfig.BOARD_WIDTH * config_StaticConfig.BOARD_HEIGHT;
+	this._heightLimit = config_StaticConfig.BOARD_HEIGHT;
+	this._widthLimit = config_StaticConfig.BOARD_WIDTH;
+	this._lineMinLength = config_StaticConfig.LINE_LENGTH;
+	this._turnChipCount = config_StaticConfig.TURN_CHIP_NUMBER;
+	this._distance = null;
+	this._freeFieldIndex = null;
+	this._gameField = null;
+	if(gameFilds == null) {
+		var _g = [];
+		var _g2 = 0;
+		var _g1 = this._fieldsNumber;
+		while(_g2 < _g1) {
+			var i = _g2++;
+			_g.push(this._emptyFieldValue);
+		}
+		gameFilds = _g;
+	}
+	this._gameField = gameFilds;
+	this.initFreeCells();
+};
+$hxClasses["core.GameField"] = core_GameField;
+core_GameField.__name__ = ["core","GameField"];
+core_GameField.randomItem = function(source) {
+	if(source == null) {
+		return null;
+	}
+	var n = source.length;
+	var randomIndex = n < 2 ? 0 : Math.floor(Math.random() * n);
+	return source[randomIndex];
+};
+core_GameField.shuffle = function(source) {
+	if(source == null) {
+		return;
+	}
+	var n = source.length;
+	if(n < 2) {
+		return;
+	}
+	var _g1 = 0;
+	var _g = n;
+	while(_g1 < _g) {
+		var i = _g1++;
+		var randomIndex = Math.floor(Math.random() * n);
+		var tmp = source[i];
+		source[i] = source[randomIndex];
+		source[randomIndex] = tmp;
+	}
+};
+core_GameField.prototype = {
+	_gameField: null
+	,_freeFieldIndex: null
+	,_distance: null
+	,_turnChipCount: null
+	,_lineMinLength: null
+	,_widthLimit: null
+	,_heightLimit: null
+	,_fieldsNumber: null
+	,_emptyFieldValue: null
+	,isFull: function() {
+		return this._freeFieldIndex.length < this._turnChipCount;
+	}
+	,isEmpty: function() {
+		return this._gameField.length == this._freeFieldIndex.length;
+	}
+	,clearStartIndex: function() {
+		this._startIndex = -1;
+		this._path = null;
+		this._distance = null;
+	}
+	,clearEndIndex: function() {
+		this._endIndex = -1;
+		this._path = null;
+	}
+	,fieldValues: null
+	,_path: null
+	,get_path: function() {
+		return this._path;
+	}
+	,_startIndex: null
+	,get_startIndex: function() {
+		return this._startIndex;
+	}
+	,set_startIndex: function(value) {
+		if(value >= 0 && value < this._fieldsNumber && this._gameField[value] != this._emptyFieldValue) {
+			this._startIndex = value;
+			this._path = null;
+			this._distance = core_algo_BreadthFirst.bfs(this._gameField,this.get_startIndex(),this.get_startIndex(),$bind(this,this.getAvailableNeighbors));
+			haxe_Log.trace("GameField set_startIndex " + this._startIndex + " " + Std.string(this._distance),{ fileName : "GameField.hx", lineNumber : 91, className : "core.GameField", methodName : "set_startIndex"});
+		}
+		return this._startIndex;
+	}
+	,_endIndex: null
+	,get_endIndex: function() {
+		return this._endIndex;
+	}
+	,set_endIndex: function(value) {
+		var isReachable = this._distance != null && this._distance[value] < this._fieldsNumber;
+		if(value >= 0 && value < this._fieldsNumber && this.get_startIndex() != -1 && isReachable) {
+			this._endIndex = value;
+			this._path = core_algo_BreadthFirst.bfsPath(this._gameField,this._distance,this.get_startIndex(),this.get_endIndex(),$bind(this,this.getAvailableNeighbors));
+			haxe_Log.trace("GameField set_endIndex " + this._endIndex + " " + Std.string(this._path) + "}",{ fileName : "GameField.hx", lineNumber : 116, className : "core.GameField", methodName : "set_endIndex"});
+		}
+		return this._endIndex;
+	}
+	,addRandomValues: function() {
+		var _g1 = 0;
+		var _g = this._turnChipCount;
+		while(_g1 < _g) {
+			var i = _g1++;
+			var randomFiledValue = core_GameField.randomItem(this.fieldValues);
+			var randomField = this._freeFieldIndex[i];
+			this._gameField[randomField] = randomFiledValue;
+		}
+		return this._freeFieldIndex.splice(0,this._turnChipCount);
+	}
+	,move: function(position) {
+		var isEmpty = this._gameField[position] == this._emptyFieldValue;
+		if(this.get_startIndex() == -1 && isEmpty) {
+			return false;
+		} else if(this.get_startIndex() == -1 && !isEmpty) {
+			haxe_Log.trace("GameField move(" + position + "), set startIndex position",{ fileName : "GameField.hx", lineNumber : 160, className : "core.GameField", methodName : "move"});
+			this.set_startIndex(position);
+			return false;
+		} else if(this.get_startIndex() != -1 && !isEmpty) {
+			haxe_Log.trace("GameField move(" + position + "), change startIndex",{ fileName : "GameField.hx", lineNumber : 164, className : "core.GameField", methodName : "move"});
+			this.set_startIndex(position);
+			return false;
+		} else {
+			if(this._distance[position] > this._fieldsNumber) {
+				haxe_Log.trace("GameField move(" + position + "), destination cant be reached",{ fileName : "GameField.hx", lineNumber : 169, className : "core.GameField", methodName : "move"});
+				return false;
+			}
+			haxe_Log.trace("GameField move(" + position + ")",{ fileName : "GameField.hx", lineNumber : 174, className : "core.GameField", methodName : "move"});
+			var i = this._freeFieldIndex.indexOf(position);
+			this._freeFieldIndex[i] = this.get_startIndex();
+			this._gameField[position] = this._gameField[this.get_startIndex()];
+			this._gameField[this.get_startIndex()] = this._emptyFieldValue;
+			this._startIndex = -1;
+			this._endIndex = -1;
+			this._path = null;
+			return true;
+		}
+	}
+	,removeLine: function(line) {
+		var _g = 0;
+		while(_g < line.length) {
+			var index = line[_g];
+			++_g;
+			var n = this._freeFieldIndex.length;
+			var randomIndex = n < 2 ? 0 : Math.floor(Math.random() * n);
+			this._freeFieldIndex.splice(randomIndex,0,index);
+			this._gameField[index] = this._emptyFieldValue;
+		}
+	}
+	,findCompleteLines: function(position) {
+		var lines = [];
+		var line = null;
+		var colIndex = position % this._widthLimit;
+		var rowIndex = Math.floor((position - colIndex) / this._widthLimit);
+		var fieldValue = this._gameField[position];
+		line = this.findLine(colIndex,0,0,1,fieldValue);
+		if(line != null) {
+			lines.push(line);
+		}
+		line = this.findLine(0,rowIndex,1,0,fieldValue);
+		if(line != null) {
+			lines.push(line);
+		}
+		var d = rowIndex < colIndex ? rowIndex : colIndex;
+		line = this.findLine(colIndex - d,rowIndex - d,1,1,fieldValue);
+		if(line != null) {
+			lines.push(line);
+		}
+		var right = this._widthLimit - 1 - colIndex;
+		if(rowIndex < right) {
+			d = rowIndex;
+		} else {
+			d = right;
+		}
+		line = this.findLine(colIndex + d,rowIndex - d,-1,1,fieldValue);
+		if(line != null) {
+			lines.push(line);
+		}
+		return lines;
+	}
+	,findLine: function(colStartIndex,rowStartIndex,colIncrement,rowIncrement,fieldValue) {
+		var result = [];
+		var colIndex = colStartIndex;
+		var rowIndex = rowStartIndex;
+		while(colIndex < this._widthLimit && rowIndex < this._heightLimit && colIndex >= 0 && rowIndex >= 0) {
+			if(this.valueAt(colIndex,rowIndex) == fieldValue) {
+				result.push(rowIndex * this._widthLimit + colIndex);
+			} else if(result.length >= this._lineMinLength) {
+				return result;
+			} else {
+				result = [];
+			}
+			colIndex += colIncrement;
+			rowIndex += rowIncrement;
+		}
+		if(result.length >= this._lineMinLength) {
+			return result;
+		} else {
+			return null;
+		}
+	}
+	,valueAt: function(colIndex,rowIndex) {
+		var index = rowIndex * this._widthLimit + colIndex;
+		return this._gameField[index];
+	}
+	,getAvailableNeighbors: function(source,index) {
+		var result = [];
+		var emptyChipType = config_StaticConfig.EMPTY_CELL_CODE;
+		var colIndex = index % config_StaticConfig.BOARD_WIDTH;
+		var rowIndex = Math.floor((index - colIndex) / config_StaticConfig.BOARD_WIDTH);
+		if(rowIndex != 0 && this.valueAt(colIndex,rowIndex - 1) == emptyChipType) {
+			result.push(index - config_StaticConfig.BOARD_WIDTH);
+		}
+		if(colIndex != config_StaticConfig.BOARD_WIDTH - 1 && this.valueAt(colIndex + 1,rowIndex) == emptyChipType) {
+			result.push(index + 1);
+		}
+		if(rowIndex != config_StaticConfig.BOARD_HEIGHT - 1 && this.valueAt(colIndex,rowIndex + 1) == emptyChipType) {
+			result.push(index + config_StaticConfig.BOARD_WIDTH);
+		}
+		if(colIndex != 0 && this.valueAt(colIndex - 1,rowIndex) == emptyChipType) {
+			result.push(index - 1);
+		}
+		return result;
+	}
+	,initFreeCells: function() {
+		this._freeFieldIndex = [];
+		var _g1 = 0;
+		var _g = this._gameField.length;
+		while(_g1 < _g) {
+			var i = _g1++;
+			if(this._gameField[i] == 0) {
+				this._freeFieldIndex.push(i);
+			}
+		}
+		core_GameField.shuffle(this._freeFieldIndex);
+	}
+	,__class__: core_GameField
+};
+var core_GameLoop = function() {
+	this._lastUpdateTime = -1;
+	this._handlers = [];
+	this._timer = new haxe_Timer(250);
+};
+$hxClasses["core.GameLoop"] = core_GameLoop;
+core_GameLoop.__name__ = ["core","GameLoop"];
+core_GameLoop.prototype = {
+	_handlers: null
+	,_timer: null
+	,_lastUpdateTime: null
+	,start: function() {
+		this._lastUpdateTime = -1;
+		this._timer.run = $bind(this,this.timerHandler);
+	}
+	,stop: function() {
+		this._timer.stop();
+	}
+	,add: function(handler) {
+		this._handlers.push(handler);
+	}
+	,remove: function(handler) {
+		HxOverrides.remove(this._handlers,handler);
+	}
+	,timerHandler: function() {
+		var time = new Date().getTime();
+		var diff = this._lastUpdateTime != -1 ? time - this._lastUpdateTime : 0;
+		var _g = 0;
+		var _g1 = this._handlers;
+		while(_g < _g1.length) {
+			var handler = _g1[_g];
+			++_g;
+			handler.update(time,diff);
+		}
+		this._lastUpdateTime = time;
+	}
+	,__class__: core_GameLoop
+};
+var core_algo_BreadthFirst = function() { };
+$hxClasses["core.algo.BreadthFirst"] = core_algo_BreadthFirst;
+core_algo_BreadthFirst.__name__ = ["core","algo","BreadthFirst"];
+core_algo_BreadthFirst.bfs = function(source,startIndex,endIndex,getNeighburs) {
 	var i;
 	var N = source.length;
 	var q = [];
@@ -4324,7 +4391,7 @@ controller_BreadthFirst.bfs = function(source,startIndex,endIndex,getNeighburs) 
 	var _g1 = N;
 	while(_g2 < _g1) {
 		var i1 = _g2++;
-		_g.push(controller_BreadthFirst.MAX_VALUE);
+		_g.push(core_algo_BreadthFirst.MAX_VALUE);
 	}
 	var distance = _g;
 	distance[startIndex] = 1;
@@ -4347,7 +4414,7 @@ controller_BreadthFirst.bfs = function(source,startIndex,endIndex,getNeighburs) 
 	}
 	return distance;
 };
-controller_BreadthFirst.bfsArray = function(source,startIndexes,getNeighburs) {
+core_algo_BreadthFirst.bfsArray = function(source,startIndexes,getNeighburs) {
 	var i = 0;
 	var N = source.length;
 	var q = startIndexes;
@@ -4356,7 +4423,7 @@ controller_BreadthFirst.bfsArray = function(source,startIndexes,getNeighburs) {
 	var _g1 = N;
 	while(_g2 < _g1) {
 		var i1 = _g2++;
-		_g.push(controller_BreadthFirst.MAX_VALUE);
+		_g.push(core_algo_BreadthFirst.MAX_VALUE);
 	}
 	var distance = _g;
 	var _g21 = 0;
@@ -4381,7 +4448,7 @@ controller_BreadthFirst.bfsArray = function(source,startIndexes,getNeighburs) {
 	}
 	return distance;
 };
-controller_BreadthFirst.bfsPath = function(source,distance,startIndex,endIndex,getNeighbors) {
+core_algo_BreadthFirst.bfsPath = function(source,distance,startIndex,endIndex,getNeighbors) {
 	var cur = endIndex;
 	var i;
 	var j;
@@ -30679,7 +30746,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 48649;
+	this.version = 506147;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = ["lime","utils","AssetCache"];
@@ -32921,7 +32988,6 @@ lime_utils_ObjectPool.prototype = {
 		if(this.__pool.h.__keys__[object.__id__] == null) {
 			this.__pool.set(object,false);
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -32964,7 +33030,6 @@ lime_utils_ObjectPool.prototype = {
 					this.__inactiveObject1 = this.__inactiveObjectList.pop();
 				}
 			}
-			this.__pool.set(object1,true);
 			this.inactiveObjects--;
 			this.activeObjects++;
 			object = object1;
@@ -32978,15 +33043,9 @@ lime_utils_ObjectPool.prototype = {
 		return object;
 	}
 	,release: function(object) {
-		if(this.__pool.h.__keys__[object.__id__] == null) {
-			lime_utils_Log.error("Object is not a member of the pool",{ fileName : "ObjectPool.hx", lineNumber : 128, className : "lime.utils.ObjectPool", methodName : "release"});
-		} else if(!this.__pool.h[object.__id__]) {
-			lime_utils_Log.error("Object has already been released",{ fileName : "ObjectPool.hx", lineNumber : 132, className : "lime.utils.ObjectPool", methodName : "release"});
-		}
 		this.activeObjects--;
 		if(this.__size == null || this.activeObjects + this.inactiveObjects < this.__size) {
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33000,7 +33059,6 @@ lime_utils_ObjectPool.prototype = {
 		}
 	}
 	,__addInactive: function(object) {
-		this.__pool.set(object,false);
 		if(this.__inactiveObject0 == null) {
 			this.__inactiveObject0 = object;
 		} else if(this.__inactiveObject1 == null) {
@@ -33027,7 +33085,6 @@ lime_utils_ObjectPool.prototype = {
 				this.__inactiveObject1 = this.__inactiveObjectList.pop();
 			}
 		}
-		this.__pool.set(object,true);
 		this.inactiveObjects--;
 		this.activeObjects++;
 		return object;
@@ -33131,7 +33188,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Matrix.prototype = {
 		if(!this.__pool.exists(object)) {
 			this.__pool.set(object,false);
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33174,7 +33230,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Matrix.prototype = {
 					this.__inactiveObject1 = this.__inactiveObjectList.pop();
 				}
 			}
-			this.__pool.set(object1,true);
 			this.inactiveObjects--;
 			this.activeObjects++;
 			object = object1;
@@ -33188,15 +33243,9 @@ lime_utils_ObjectPool_$openfl_$geom_$Matrix.prototype = {
 		return object;
 	}
 	,release: function(object) {
-		if(!this.__pool.exists(object)) {
-			lime_utils_Log.error("Object is not a member of the pool",{ fileName : "ObjectPool.hx", lineNumber : 128, className : "lime.utils.ObjectPool", methodName : "release"});
-		} else if(!this.__pool.get(object)) {
-			lime_utils_Log.error("Object has already been released",{ fileName : "ObjectPool.hx", lineNumber : 132, className : "lime.utils.ObjectPool", methodName : "release"});
-		}
 		this.activeObjects--;
 		if(this.__size == null || this.activeObjects + this.inactiveObjects < this.__size) {
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33210,7 +33259,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Matrix.prototype = {
 		}
 	}
 	,__addInactive: function(object) {
-		this.__pool.set(object,false);
 		if(this.__inactiveObject0 == null) {
 			this.__inactiveObject0 = object;
 		} else if(this.__inactiveObject1 == null) {
@@ -33237,7 +33285,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Matrix.prototype = {
 				this.__inactiveObject1 = this.__inactiveObjectList.pop();
 			}
 		}
-		this.__pool.set(object,true);
 		this.inactiveObjects--;
 		this.activeObjects++;
 		return object;
@@ -33341,7 +33388,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Point.prototype = {
 		if(!this.__pool.exists(object)) {
 			this.__pool.set(object,false);
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33384,7 +33430,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Point.prototype = {
 					this.__inactiveObject1 = this.__inactiveObjectList.pop();
 				}
 			}
-			this.__pool.set(object1,true);
 			this.inactiveObjects--;
 			this.activeObjects++;
 			object = object1;
@@ -33398,15 +33443,9 @@ lime_utils_ObjectPool_$openfl_$geom_$Point.prototype = {
 		return object;
 	}
 	,release: function(object) {
-		if(!this.__pool.exists(object)) {
-			lime_utils_Log.error("Object is not a member of the pool",{ fileName : "ObjectPool.hx", lineNumber : 128, className : "lime.utils.ObjectPool", methodName : "release"});
-		} else if(!this.__pool.get(object)) {
-			lime_utils_Log.error("Object has already been released",{ fileName : "ObjectPool.hx", lineNumber : 132, className : "lime.utils.ObjectPool", methodName : "release"});
-		}
 		this.activeObjects--;
 		if(this.__size == null || this.activeObjects + this.inactiveObjects < this.__size) {
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33420,7 +33459,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Point.prototype = {
 		}
 	}
 	,__addInactive: function(object) {
-		this.__pool.set(object,false);
 		if(this.__inactiveObject0 == null) {
 			this.__inactiveObject0 = object;
 		} else if(this.__inactiveObject1 == null) {
@@ -33447,7 +33485,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Point.prototype = {
 				this.__inactiveObject1 = this.__inactiveObjectList.pop();
 			}
 		}
-		this.__pool.set(object,true);
 		this.inactiveObjects--;
 		this.activeObjects++;
 		return object;
@@ -33551,7 +33588,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Rectangle.prototype = {
 		if(!this.__pool.exists(object)) {
 			this.__pool.set(object,false);
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33594,7 +33630,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Rectangle.prototype = {
 					this.__inactiveObject1 = this.__inactiveObjectList.pop();
 				}
 			}
-			this.__pool.set(object1,true);
 			this.inactiveObjects--;
 			this.activeObjects++;
 			object = object1;
@@ -33608,15 +33643,9 @@ lime_utils_ObjectPool_$openfl_$geom_$Rectangle.prototype = {
 		return object;
 	}
 	,release: function(object) {
-		if(!this.__pool.exists(object)) {
-			lime_utils_Log.error("Object is not a member of the pool",{ fileName : "ObjectPool.hx", lineNumber : 128, className : "lime.utils.ObjectPool", methodName : "release"});
-		} else if(!this.__pool.get(object)) {
-			lime_utils_Log.error("Object has already been released",{ fileName : "ObjectPool.hx", lineNumber : 132, className : "lime.utils.ObjectPool", methodName : "release"});
-		}
 		this.activeObjects--;
 		if(this.__size == null || this.activeObjects + this.inactiveObjects < this.__size) {
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33630,7 +33659,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Rectangle.prototype = {
 		}
 	}
 	,__addInactive: function(object) {
-		this.__pool.set(object,false);
 		if(this.__inactiveObject0 == null) {
 			this.__inactiveObject0 = object;
 		} else if(this.__inactiveObject1 == null) {
@@ -33657,7 +33685,6 @@ lime_utils_ObjectPool_$openfl_$geom_$Rectangle.prototype = {
 				this.__inactiveObject1 = this.__inactiveObjectList.pop();
 			}
 		}
-		this.__pool.set(object,true);
 		this.inactiveObjects--;
 		this.activeObjects++;
 		return object;
@@ -33761,7 +33788,6 @@ lime_utils_ObjectPool_$openfl_$utils_$TouchData.prototype = {
 		if(!this.__pool.exists(object)) {
 			this.__pool.set(object,false);
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33804,7 +33830,6 @@ lime_utils_ObjectPool_$openfl_$utils_$TouchData.prototype = {
 					this.__inactiveObject1 = this.__inactiveObjectList.pop();
 				}
 			}
-			this.__pool.set(object1,true);
 			this.inactiveObjects--;
 			this.activeObjects++;
 			object = object1;
@@ -33818,15 +33843,9 @@ lime_utils_ObjectPool_$openfl_$utils_$TouchData.prototype = {
 		return object;
 	}
 	,release: function(object) {
-		if(!this.__pool.exists(object)) {
-			lime_utils_Log.error("Object is not a member of the pool",{ fileName : "ObjectPool.hx", lineNumber : 128, className : "lime.utils.ObjectPool", methodName : "release"});
-		} else if(!this.__pool.get(object)) {
-			lime_utils_Log.error("Object has already been released",{ fileName : "ObjectPool.hx", lineNumber : 132, className : "lime.utils.ObjectPool", methodName : "release"});
-		}
 		this.activeObjects--;
 		if(this.__size == null || this.activeObjects + this.inactiveObjects < this.__size) {
 			this.clean(object);
-			this.__pool.set(object,false);
 			if(this.__inactiveObject0 == null) {
 				this.__inactiveObject0 = object;
 			} else if(this.__inactiveObject1 == null) {
@@ -33840,7 +33859,6 @@ lime_utils_ObjectPool_$openfl_$utils_$TouchData.prototype = {
 		}
 	}
 	,__addInactive: function(object) {
-		this.__pool.set(object,false);
 		if(this.__inactiveObject0 == null) {
 			this.__inactiveObject0 = object;
 		} else if(this.__inactiveObject1 == null) {
@@ -33867,7 +33885,6 @@ lime_utils_ObjectPool_$openfl_$utils_$TouchData.prototype = {
 				this.__inactiveObject1 = this.__inactiveObjectList.pop();
 			}
 		}
-		this.__pool.set(object,true);
 		this.inactiveObjects--;
 		this.activeObjects++;
 		return object;
@@ -34081,7 +34098,7 @@ lime_utils_compress_Zlib.decompress = function(bytes) {
 	var data = pako.inflate(bytes.b.bufferValue);
 	return haxe_io_Bytes.ofData(data);
 };
-var model_GameData = function(init) {
+var model_GameData = function() {
 	this.sessionId = "";
 	this.path = null;
 	this.endIndex = -1;
@@ -34090,7 +34107,7 @@ var model_GameData = function(init) {
 	this.duration = 0.0;
 	this.level = 1;
 	this.stepCount = 0;
-	this.state = GameState.NONE;
+	this.state = model_GameState.NONE;
 };
 $hxClasses["model.GameData"] = model_GameData;
 model_GameData.__name__ = ["model","GameData"];
@@ -34111,11 +34128,27 @@ model_GameData.prototype = {
 	}
 	,toString: function() {
 		var fieldsString = this.fields != null ? "[" + this.fields.join(" ") + "]" : "is empty";
-		var result = "PuzzleVO score: " + this.score + ", duration: " + this.duration + ", " + fieldsString;
+		var result = "GameData score: " + this.score + ", duration: " + view_TimeFormatter.format(this.duration) + ", " + fieldsString;
 		return result;
 	}
 	,__class__: model_GameData
 };
+var model_GameState = $hxClasses["model.GameState"] = { __ename__ : ["model","GameState"], __constructs__ : ["NONE","PLAY","WAIT","PAUSE","GAME_OVER"] };
+model_GameState.NONE = ["NONE",0];
+model_GameState.NONE.toString = $estr;
+model_GameState.NONE.__enum__ = model_GameState;
+model_GameState.PLAY = ["PLAY",1];
+model_GameState.PLAY.toString = $estr;
+model_GameState.PLAY.__enum__ = model_GameState;
+model_GameState.WAIT = ["WAIT",2];
+model_GameState.WAIT.toString = $estr;
+model_GameState.WAIT.__enum__ = model_GameState;
+model_GameState.PAUSE = ["PAUSE",3];
+model_GameState.PAUSE.toString = $estr;
+model_GameState.PAUSE.__enum__ = model_GameState;
+model_GameState.GAME_OVER = ["GAME_OVER",4];
+model_GameState.GAME_OVER.toString = $estr;
+model_GameState.GAME_OVER.__enum__ = model_GameState;
 var model_UserData = function() {
 	this.sessionId = "";
 	this.score = 0;
@@ -34141,7 +34174,7 @@ model_UserData.prototype = {
 		return result;
 	}
 	,toString: function() {
-		var result = "{TopUserRecordVO" + " " + this.sessionId + " " + this.displayName + " " + this.score + " " + this.time + "}";
+		var result = "UserData " + this.sessionId + " " + this.displayName + " " + this.score + " " + this.time;
 		return result;
 	}
 	,__class__: model_UserData
@@ -62941,17 +62974,11 @@ openfl_display3D_textures_TextureBase.prototype = $extend(openfl_events_EventDis
 		if(this.__compressedMemoryUsage > 0) {
 			this.__context.__statsDecrement(4);
 			var currentCompressedMemory = this.__context.__statsSubtract(9,this.__compressedMemoryUsage);
-			if(this.__outputTextureMemoryUsage) {
-				haxe_Log.trace(" - Texture Compressed GPU Memory (-" + this.__compressedMemoryUsage + ") - Current Compressed Memory : " + currentCompressedMemory,{ fileName : "TextureBase.hx", lineNumber : 148, className : "openfl.display3D.textures.TextureBase", methodName : "dispose"});
-			}
 			this.__compressedMemoryUsage = 0;
 		}
 		if(this.__memoryUsage > 0) {
 			this.__context.__statsDecrement(3);
 			var currentMemory = this.__context.__statsSubtract(8,this.__memoryUsage);
-			if(this.__outputTextureMemoryUsage) {
-				haxe_Log.trace(" - Texture GPU Memory (-" + this.__memoryUsage + ") - Current Memory : " + currentMemory,{ fileName : "TextureBase.hx", lineNumber : 165, className : "openfl.display3D.textures.TextureBase", methodName : "dispose"});
-			}
 			this.__memoryUsage = 0;
 		}
 	}
@@ -63031,9 +63058,6 @@ openfl_display3D_textures_TextureBase.prototype = $extend(openfl_events_EventDis
 		}
 		this.__compressedMemoryUsage += memory;
 		var currentCompressedMemory = this.__context.__statsAdd(9,memory);
-		if(this.__outputTextureMemoryUsage) {
-			haxe_Log.trace(" + Texture Compressed GPU Memory (+" + memory + ") - Current Compressed Memory : " + currentCompressedMemory,{ fileName : "TextureBase.hx", lineNumber : 345, className : "openfl.display3D.textures.TextureBase", methodName : "__trackCompressedMemoryUsage"});
-		}
 		this.__trackMemoryUsage(memory);
 	}
 	,__trackMemoryUsage: function(memory) {
@@ -63042,9 +63066,6 @@ openfl_display3D_textures_TextureBase.prototype = $extend(openfl_events_EventDis
 		}
 		this.__memoryUsage += memory;
 		var currentMemory = this.__context.__statsAdd(8,memory);
-		if(this.__outputTextureMemoryUsage) {
-			haxe_Log.trace(" + Texture GPU Memory (+" + memory + ") - Current Memory : " + currentMemory,{ fileName : "TextureBase.hx", lineNumber : 369, className : "openfl.display3D.textures.TextureBase", methodName : "__trackMemoryUsage"});
-		}
 	}
 	,__class__: openfl_display3D_textures_TextureBase
 });
@@ -71696,10 +71717,14 @@ view_FieldBitmapFactory.prototype = {
 	,__class__: view_FieldBitmapFactory
 };
 var view_GameScreen = function() {
-	this.pathToIndex = -1;
+	this._gameOverPopupVisibleChanged = true;
+	this._gameOverPopupVisible = false;
+	this._gameFieldEnabledChanged = true;
+	this._gameFieldEnabled = false;
+	this.endIndex = -1;
 	this.selectIndex = -1;
 	this._fields = null;
-	this.chipSelected = false;
+	this.isFieldSelected = false;
 	openfl_display_Sprite.call(this);
 	this.background = new openfl_display_Bitmap(assets_GameAssets.get_BACKGROUND_BITMAP());
 	this.addChild(this.background);
@@ -71727,6 +71752,9 @@ var view_GameScreen = function() {
 		this._fields.push(field);
 		this.addChild(field);
 	}
+	this.gameOverPopup = new openfl_display_Bitmap(assets_GameAssets.get_GAME_OVER_POPUP());
+	this.set_gameOverPopupVisible(false);
+	this.addChild(this.gameOverPopup);
 	this.addEventListener("addedToStage",$bind(this,this.addedToStageHandler));
 	this.addEventListener("removedFromStage",$bind(this,this.removeFromStageHandler));
 };
@@ -71735,30 +71763,64 @@ view_GameScreen.__name__ = ["view","GameScreen"];
 view_GameScreen.__super__ = openfl_display_Sprite;
 view_GameScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 	render: function(game) {
-		var chipCode = game.startIndex != -1 ? game.fields[game.startIndex] : 0;
-		var showPath = game.startIndex != -1 && game.path != null && game.path.length > 1;
-		var _g1 = 0;
-		var _g = config_StaticConfig.BOARD_CELLS;
-		while(_g1 < _g) {
-			var i = _g1++;
-			this._fields[i].set_select(i == game.startIndex);
-			this._fields[i].set_state(game.fields[i]);
-			this._fields[i].set_background(showPath && game.path.indexOf(i) >= 0 ? chipCode : 0);
+		if(game.state == model_GameState.PLAY) {
+			this.set_gameFieldEnabled(true);
+			this.set_gameOverPopupVisible(false);
+			var fieldValue = game.startIndex != -1 ? game.fields[game.startIndex] : 0;
+			var showPath = game.startIndex != -1 && game.path != null && game.path.length > 1;
+			var _g1 = 0;
+			var _g = config_StaticConfig.BOARD_CELLS;
+			while(_g1 < _g) {
+				var i = _g1++;
+				this._fields[i].set_select(i == game.startIndex);
+				this._fields[i].set_state(game.fields[i]);
+				this._fields[i].set_background(showPath && game.path.indexOf(i) >= 0 ? fieldValue : 0);
+			}
+			this.tfDuration.set_text(view_TimeFormatter.format(game.duration));
+			this.tfScore.set_text(game.score == null ? "null" : "" + game.score);
+			this.isFieldSelected = game.startIndex != -1;
+		} else if(game.state == model_GameState.GAME_OVER) {
+			this.set_gameFieldEnabled(false);
+			this.set_gameOverPopupVisible(true);
 		}
-		this.tfDuration.set_text(game.duration == null ? "null" : "" + game.duration);
-		this.tfScore.set_text(game.score == null ? "null" : "" + game.score);
-		this.chipSelected = game.startIndex != -1;
 	}
-	,chipSelected: null
+	,isFieldSelected: null
 	,_fields: null
 	,selectIndex: null
-	,pathToIndex: null
+	,endIndex: null
 	,background: null
 	,tfDuration: null
 	,tfScore: null
 	,imgDuration: null
 	,imgScore: null
+	,gameOverPopup: null
 	,btnBack: null
+	,_gameFieldEnabled: null
+	,_gameFieldEnabledChanged: null
+	,get_gameFieldEnabled: function() {
+		return this._gameFieldEnabled;
+	}
+	,set_gameFieldEnabled: function(value) {
+		if(this._gameFieldEnabled != value) {
+			this._gameFieldEnabled = value;
+			this._gameFieldEnabledChanged = true;
+			this.updateGameFieldEnabled();
+		}
+		return this._gameFieldEnabled;
+	}
+	,_gameOverPopupVisible: null
+	,_gameOverPopupVisibleChanged: null
+	,get_gameOverPopupVisible: function() {
+		return this._gameOverPopupVisible;
+	}
+	,set_gameOverPopupVisible: function(value) {
+		if(this._gameOverPopupVisible != value) {
+			this._gameOverPopupVisible = value;
+			this._gameOverPopupVisibleChanged = true;
+			this.updateGameOverPopupVisible();
+		}
+		return this._gameOverPopupVisible;
+	}
 	,createTextField: function() {
 		var result = new openfl_text_TextField();
 		result.set_selectable(false);
@@ -71770,26 +71832,6 @@ view_GameScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 		return result;
 	}
 	,coorToIndex: function(stageX,stageY) {
-		if(stageX < config_StaticConfig.BOARD_LEFT) {
-			stageX = config_StaticConfig.BOARD_LEFT + 10;
-		} else {
-			stageX = stageX;
-		}
-		if(stageX > config_StaticConfig.BOARD_RIGHT) {
-			stageX = config_StaticConfig.BOARD_RIGHT - 10;
-		} else {
-			stageX = stageX;
-		}
-		if(stageY < config_StaticConfig.BOARD_TOP) {
-			stageY = config_StaticConfig.BOARD_TOP + 10;
-		} else {
-			stageY = stageY;
-		}
-		if(stageY > config_StaticConfig.BOARD_BOTTOM) {
-			stageY = config_StaticConfig.BOARD_BOTTOM - 10;
-		} else {
-			stageY = stageY;
-		}
 		var colIndex = Math.floor((stageX - config_StaticConfig.BOARD_LEFT) / config_StaticConfig.TILE_WIDTH);
 		var rowIndex = Math.floor((stageY - config_StaticConfig.BOARD_TOP) / config_StaticConfig.TILE_HEIGHT);
 		if(colIndex < 0 || colIndex > config_StaticConfig.BOARD_WIDTH || rowIndex < 0 || rowIndex > config_StaticConfig.BOARD_HEIGHT) {
@@ -71797,38 +71839,52 @@ view_GameScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 		}
 		return rowIndex * config_StaticConfig.BOARD_WIDTH + colIndex;
 	}
+	,updateGameFieldEnabled: function() {
+		if(this.stage != null && this._gameFieldEnabledChanged) {
+			if(this._gameFieldEnabled) {
+				this.addEventListener("mouseDown",$bind(this,this.stage_mouseDownHandler));
+				this.stage.addEventListener("mouseMove",$bind(this,this.stage_mouseMoveHandler));
+			} else {
+				this.removeEventListener("mouseDown",$bind(this,this.stage_mouseDownHandler));
+				this.stage.removeEventListener("mouseMove",$bind(this,this.stage_mouseMoveHandler));
+			}
+			this._gameFieldEnabledChanged = false;
+		}
+	}
+	,updateGameOverPopupVisible: function() {
+		if(this.stage != null && this.gameOverPopup != null && this._gameOverPopupVisibleChanged) {
+			this.gameOverPopup.set_visible(this._gameOverPopupVisible);
+			if(this._gameOverPopupVisible) {
+				this.addEventListener("click",$bind(this,this.gameOverPopup_clickHandler));
+			} else {
+				this.removeEventListener("click",$bind(this,this.gameOverPopup_clickHandler));
+			}
+			this._gameOverPopupVisibleChanged = false;
+		}
+	}
 	,stage_mouseDownHandler: function(event) {
 		this.selectIndex = this.coorToIndex(event.stageX,event.stageY);
-		if(this.selectIndex == -1) {
-			return;
+		if(this.selectIndex != -1) {
+			this.dispatchEvent(new events_GameEvent(events_GameEvent.MOVE,true,false,this.selectIndex));
 		}
-		var type = this.chipSelected ? events_GameEvent.MOVE : events_GameEvent.SELECT;
-		this.dispatchEvent(new events_GameEvent(type,true,false,this.selectIndex));
 	}
 	,stage_mouseMoveHandler: function(event) {
-		if(!this.chipSelected) {
+		if(!this.isFieldSelected) {
 			return;
 		}
 		var index = this.coorToIndex(event.stageX,event.stageY);
-		if(index != -1 && index != this.pathToIndex) {
-			this.pathToIndex = index;
-			this.dispatchEvent(new events_GameEvent(events_GameEvent.PATH,true,false,this.pathToIndex));
+		if(index != -1 && index != this.endIndex) {
+			this.endIndex = index;
+			this.dispatchEvent(new events_GameEvent(events_GameEvent.PATH,true,false,this.endIndex));
 		}
-	}
-	,stage_mouseUpHandler: function(event) {
-		var index = this.coorToIndex(event.stageX,event.stageY);
-		if(index != -1 && this.selectIndex != index && this.chipSelected) {
-			this.dispatchEvent(new events_GameEvent(events_GameEvent.MOVE,true,false,index));
-		}
-		this.selectIndex = -1;
 	}
 	,btnBack_clickHandler: function(event) {
 		this.dispatchEvent(new events_GameEvent(events_GameEvent.MENU,true));
 	}
+	,gameOverPopup_clickHandler: function(event) {
+		this.dispatchEvent(new events_GameEvent(events_GameEvent.GAME_OVER,true));
+	}
 	,addedToStageHandler: function(event) {
-		this.stage.addEventListener("mouseDown",$bind(this,this.stage_mouseDownHandler));
-		this.stage.addEventListener("mouseUp",$bind(this,this.stage_mouseUpHandler));
-		this.stage.addEventListener("mouseMove",$bind(this,this.stage_mouseMoveHandler));
 		this.tfDuration.set_x(config_StaticConfig.BOARD_RIGHT - 75);
 		this.tfDuration.set_y(config_StaticConfig.BOARD_BOTTOM + 7);
 		this.imgDuration.set_x(config_StaticConfig.BOARD_RIGHT - 100);
@@ -71839,28 +71895,78 @@ view_GameScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 		this.imgScore.set_y(config_StaticConfig.BOARD_BOTTOM + 7);
 		this.btnBack.set_x(20);
 		this.btnBack.set_y(20);
+		this.gameOverPopup.set_x(config_StaticConfig.BOARD_LEFT);
+		this.gameOverPopup.set_y(config_StaticConfig.BOARD_TOP);
+		this.updateGameFieldEnabled();
+		this.updateGameOverPopupVisible();
 	}
 	,removeFromStageHandler: function(event) {
-		this.stage.removeEventListener("mouseDown",$bind(this,this.stage_mouseDownHandler));
-		this.stage.removeEventListener("mouseUp",$bind(this,this.stage_mouseUpHandler));
-		this.stage.removeEventListener("mouseMove",$bind(this,this.stage_mouseMoveHandler));
+		this.set_gameFieldEnabled(false);
+		this._gameOverPopupVisible = false;
 	}
 	,__class__: view_GameScreen
 });
-var view_MenuScreen = function() {
+var view_GameView = function() {
+	this.menuScreen = new view_MenuScreen();
+	this.gameScreen = new view_GameScreen();
 	openfl_display_Sprite.call(this);
+	this.addChild(this.gameScreen);
+	this.addChild(this.menuScreen);
+};
+$hxClasses["view.GameView"] = view_GameView;
+view_GameView.__name__ = ["view","GameView"];
+view_GameView.__super__ = openfl_display_Sprite;
+view_GameView.prototype = $extend(openfl_display_Sprite.prototype,{
+	gameScreen: null
+	,menuScreen: null
+	,showMenu: function(gameRunning) {
+		this.menuScreen.set_gameRunning(gameRunning);
+		this.menuScreen.set_visible(true);
+		this.gameScreen.set_visible(false);
+	}
+	,hideMenu: function() {
+		this.menuScreen.set_visible(false);
+		this.gameScreen.set_visible(true);
+	}
+	,__class__: view_GameView
+});
+var view_MenuScreen = function() {
+	this._gameRunningChanged = true;
+	this._gameRunning = false;
+	openfl_display_Sprite.call(this);
+	this._currentUser = new model_UserData();
+	this.imgBackground = new openfl_display_Bitmap(assets_GameAssets.get_BACKGROUND_MENU_BITMAP());
+	this.addChild(this.imgBackground);
+	this.btnPlayGame = new view_controls_SimpleButton(new openfl_display_Bitmap(assets_GameAssets.get_BTN_START_BITMAP()));
+	this.btnPlayGame.addEventListener("click",$bind(this,this.btnPlayGame_clickHandler));
+	this.addChild(this.btnPlayGame);
+	this.btnNewGame = new view_controls_SimpleButton(new openfl_display_Bitmap(assets_GameAssets.get_BTN_RESTART_BITMAP()));
+	this.btnNewGame.addEventListener("click",$bind(this,this.btnNewGame_clickHandler));
+	this.addChild(this.btnNewGame);
+	this.btnContinueGame = new view_controls_SimpleButton(new openfl_display_Bitmap(assets_GameAssets.get_BTN_CONTINUE_BITMAP()));
+	this.btnContinueGame.addEventListener("click",$bind(this,this.btnContinueGame_clickHandler));
+	this.addChild(this.btnContinueGame);
+	this.resultBoard = new view_ResultBoard();
+	this.resultBoard.set_users(this._users);
+	this.resultBoard.set_currentUser(this._currentUser);
+	this.addChild(this.resultBoard);
+	this.addEventListener("addedToStage",$bind(this,this.addedToStageHandler));
 };
 $hxClasses["view.MenuScreen"] = view_MenuScreen;
 view_MenuScreen.__name__ = ["view","MenuScreen"];
 view_MenuScreen.__super__ = openfl_display_Sprite;
 view_MenuScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 	_gameRunning: null
+	,_gameRunningChanged: null
 	,get_gameRunning: function() {
 		return this._gameRunning;
 	}
 	,set_gameRunning: function(value) {
-		this._gameRunning = value;
-		this.btnContinueGame.set_visible(value);
+		if(this._gameRunning != value) {
+			this._gameRunning = value;
+			this._gameRunningChanged = true;
+			this.updateGameRunning();
+		}
 		return this._gameRunning;
 	}
 	,_users: null
@@ -71888,47 +71994,44 @@ view_MenuScreen.prototype = $extend(openfl_display_Sprite.prototype,{
 		}
 		return this._currentUser;
 	}
-	,MenuScreen: function() {
-		this._currentUser = new model_UserData();
-		this.imgBackground = new openfl_display_Bitmap(assets_GameAssets.get_BACKGROUND_MENU_BITMAP());
-		this.addChild(this.imgBackground);
-		this.btnNewGame = new view_controls_SimpleButton(new openfl_display_Bitmap(assets_GameAssets.get_BTN_RESTART_BITMAP()));
-		this.btnNewGame.addEventListener("click",$bind(this,this.btnNewGame_clickHandler));
-		this.addChild(this.btnNewGame);
-		this.btnContinueGame = new view_controls_SimpleButton(new openfl_display_Bitmap(assets_GameAssets.get_BTN_CONTINUE_BITMAP()));
-		this.btnContinueGame.addEventListener("click",$bind(this,this.btnContinueGame_clickHandler));
-		this.addChild(this.btnContinueGame);
-		this.resultBoard = new view_ResultBoard();
-		this.resultBoard.addEventListener("click",$bind(this,this.resultBoard_clickHandler));
-		this.resultBoard.addEventListener("change",$bind(this,this.resultBoard_textInputHandler));
-		this.resultBoard.set_users(this._users);
-		this.resultBoard.set_currentUser(this._currentUser);
-		this.addChild(this.resultBoard);
-		this.addEventListener("addedToStage",$bind(this,this.addedToStageHandler));
-	}
 	,imgBackground: null
 	,btnNewGame: null
+	,btnPlayGame: null
 	,btnContinueGame: null
 	,resultBoard: null
+	,updateGameRunning: function() {
+		if(this._gameRunningChanged) {
+			if(this._gameRunning) {
+				this.btnNewGame.set_visible(true);
+				this.btnContinueGame.set_visible(true);
+				this.btnPlayGame.set_visible(false);
+			} else {
+				this.btnNewGame.set_visible(false);
+				this.btnContinueGame.set_visible(false);
+				this.btnPlayGame.set_visible(true);
+			}
+			this._gameRunningChanged = false;
+		}
+	}
 	,addedToStageHandler: function(event) {
 		this.btnNewGame.set_x(config_StaticConfig.BOARD_LEFT + 10);
 		this.btnNewGame.set_y(80);
+		this.btnPlayGame.set_x(config_StaticConfig.BOARD_LEFT + 10);
+		this.btnPlayGame.set_y(80);
 		this.btnContinueGame.set_x(config_StaticConfig.BOARD_RIGHT - 10 - this.btnContinueGame.get_width());
 		this.btnContinueGame.set_y(80);
 		this.resultBoard.set_x(config_StaticConfig.BOARD_LEFT + 7);
 		this.resultBoard.set_y(180);
+		this.updateGameRunning();
 	}
 	,btnNewGame_clickHandler: function(event) {
 		this.dispatchEvent(new events_GameEvent(events_GameEvent.CREATE));
 	}
+	,btnPlayGame_clickHandler: function(event) {
+		this.dispatchEvent(new events_GameEvent(events_GameEvent.CREATE));
+	}
 	,btnContinueGame_clickHandler: function(event) {
 		this.dispatchEvent(new events_GameEvent(events_GameEvent.START));
-	}
-	,resultBoard_clickHandler: function(event) {
-		this.dispatchEvent(new events_GameEvent(events_GameEvent.RESULT));
-	}
-	,resultBoard_textInputHandler: function(event) {
-		this.dispatchEvent(new events_GameEvent(events_GameEvent.SAVE_RESULT));
 	}
 	,__class__: view_MenuScreen
 });
@@ -72075,8 +72178,8 @@ view_ResultBoard.prototype = $extend(openfl_display_Sprite.prototype,{
 		if(lime_text__$UTF8String_UTF8String_$Impl_$.equals(this.usernameTextField.get_text(),"") || lime_text__$UTF8String_UTF8String_$Impl_$.equals(this.usernameTextField.get_text(),config_StaticConfig.LEAD_BOARD_DEFAULT_USERNAME)) {
 			this.usernameTextField.set_text(this._currentUser.displayName);
 			this.usernameTextField.setSelection(0,this._currentUser.displayName.length - 1);
-		} else if(this.usernameTextField.get_text() != this._currentUser.displayName) {
-			this.dispatchEvent(new events_GameEvent(events_GameEvent.SAVE_RESULT));
+		} else {
+			var tmp = this.usernameTextField.get_text() != this._currentUser.displayName;
 		}
 		this.scoreTextField.set_text(Std.string(this._currentUser.score));
 		this.timeTextField.set_text(Std.string(this._currentUser.time));
@@ -72085,13 +72188,38 @@ view_ResultBoard.prototype = $extend(openfl_display_Sprite.prototype,{
 		this.usernameTextFields[index].set_text(user.displayName);
 		this.scoreTextFields[index].set_text(user.score == null ? "null" : "" + user.score);
 		this.timeTextFields[index].set_text(user.time == null ? "null" : "" + user.time);
-		haxe_Log.trace("updateRow " + index + ": " + Std.string(user),{ fileName : "ResultBoard.hx", lineNumber : 178, className : "view.ResultBoard", methodName : "updateRow", customParams : [this]});
+		haxe_Log.trace("updateRow " + index + ": " + Std.string(user),{ fileName : "ResultBoard.hx", lineNumber : 173, className : "view.ResultBoard", methodName : "updateRow", customParams : [this]});
 	}
 	,background_mouseClickHandler: function(event) {
-		haxe_Log.trace("background_mouseClickHandler",{ fileName : "ResultBoard.hx", lineNumber : 182, className : "view.ResultBoard", methodName : "background_mouseClickHandler"});
+		haxe_Log.trace("background_mouseClickHandler",{ fileName : "ResultBoard.hx", lineNumber : 177, className : "view.ResultBoard", methodName : "background_mouseClickHandler"});
 	}
 	,__class__: view_ResultBoard
 });
+var view_TimeFormatter = function() { };
+$hxClasses["view.TimeFormatter"] = view_TimeFormatter;
+view_TimeFormatter.__name__ = ["view","TimeFormatter"];
+view_TimeFormatter.format = function(time) {
+	var hour = 0;
+	var min = 0;
+	var sec = 0;
+	if(time > view_TimeFormatter.MILISECONDS_PER_HOUR) {
+		hour = Math.floor(time / view_TimeFormatter.MILISECONDS_PER_HOUR);
+		time %= view_TimeFormatter.MILISECONDS_PER_HOUR;
+	}
+	if(time > view_TimeFormatter.MILISECONDS_PER_MIN) {
+		min = Math.floor(time / view_TimeFormatter.MILISECONDS_PER_MIN);
+		time %= view_TimeFormatter.MILISECONDS_PER_MIN;
+	}
+	if(time > 1000) {
+		sec = Math.floor(time / 1000);
+		time %= 1000;
+	}
+	var result = hour > 0 ? (hour == null ? "null" : "" + hour) + ":" : "";
+	result += min > 0 ? Std.string(min < 10 ? "0" + min : min) : "00";
+	result += ":";
+	result += sec > 0 ? Std.string(sec < 10 ? "0" + sec : sec) : "00";
+	return result;
+};
 var view_controls_SimpleButton = function(bitmap,caption,fitText,width,height) {
 	if(height == null) {
 		height = 22;
@@ -72253,8 +72381,6 @@ config_StaticConfig.LEVEL3_SCORE = 180;
 config_StaticConfig.LEVEL4_SCORE = 300;
 config_StaticConfig.COLOR_COUNT = 9;
 config_StaticConfig.START_COLOR_COUNT = 3;
-config_StaticConfig.GAME_SCREEN = "gameScreen";
-config_StaticConfig.MENU_SCREEN = "menuScreen";
 config_StaticConfig.LEAD_BOARD_DEFAULT_USERNAME = "ananimouse";
 config_StaticConfig.LEAD_BOARD_USERNAME_MAX_LENGTH = 19;
 config_StaticConfig.LEAD_BOARD_LINES = 9;
@@ -72275,8 +72401,8 @@ config_StaticConfig.BOARD_RIGHT = config_StaticConfig.BOARD_LEFT + config_Static
 config_StaticConfig.BOARD_BOTTOM = config_StaticConfig.BOARD_TOP + config_StaticConfig.TILE_HEIGHT * config_StaticConfig.BOARD_HEIGHT;
 config_StaticConfig._sourceCodeURL = "";
 config_StaticConfig._leadBoardURL = "";
-controller_BreadthFirst.MAX_VALUE = 2147483647;
-controller_BreadthFirst.MIN_VALUE = -2147483648;
+core_algo_BreadthFirst.MAX_VALUE = 2147483647;
+core_algo_BreadthFirst.MIN_VALUE = -2147483648;
 openfl_events_Event.ACTIVATE = "activate";
 openfl_events_Event.ADDED = "added";
 openfl_events_Event.ADDED_TO_STAGE = "addedToStage";
@@ -72313,14 +72439,13 @@ openfl_events_Event.TAB_ENABLED_CHANGE = "tabEnabledChange";
 openfl_events_Event.TAB_INDEX_CHANGE = "tabIndexChange";
 openfl_events_Event.TEXTURE_READY = "textureReady";
 openfl_events_Event.UNLOAD = "unload";
-events_GameEvent.CREATE = "createPuzzle";
-events_GameEvent.START = "startPuzzle";
-events_GameEvent.RESULT = "resultPuzzle";
-events_GameEvent.SELECT = "selectChip";
-events_GameEvent.MOVE = "moveChip";
-events_GameEvent.MENU = "menu";
-events_GameEvent.PATH = "chipPath";
-events_GameEvent.SAVE_RESULT = "saveResult";
+events_GameEvent.CREATE = "createGame";
+events_GameEvent.START = "startGame";
+events_GameEvent.SELECT = "selectField";
+events_GameEvent.MOVE = "moveField";
+events_GameEvent.MENU = "gotoMenu";
+events_GameEvent.PATH = "pathToField";
+events_GameEvent.GAME_OVER = "gameOver";
 haxe_Serializer.USE_CACHE = false;
 haxe_Serializer.USE_ENUM_INDEX = false;
 haxe_Serializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
@@ -74134,7 +74259,12 @@ openfl_utils_TouchData.__pool = new lime_utils_ObjectPool_$openfl_$utils_$TouchD
 	data.reset();
 });
 view_Field.DROP_SHADOW_FILTER = new openfl_filters_DropShadowFilter(4,90,3355443,1,6,6);
+view_TimeFormatter.MILISECONDS_PER_MIN = 60000;
+view_TimeFormatter.MILISECONDS_PER_HOUR = view_TimeFormatter.MILISECONDS_PER_MIN * 60;
+view_TimeFormatter.MILISECONDS_PER_DAY = view_TimeFormatter.MILISECONDS_PER_HOUR * 24;
+view_TimeFormatter.MILISECONDS_PER_WEEK = view_TimeFormatter.MILISECONDS_PER_DAY * 7;
+view_TimeFormatter.MILISECONDS_PER_MONTH = view_TimeFormatter.MILISECONDS_PER_DAY * 30;
+view_TimeFormatter.MILISECONDS_PER_SEASON = view_TimeFormatter.MILISECONDS_PER_MONTH * 3;
+view_TimeFormatter.MILISECONDS_PER_YEAR = view_TimeFormatter.MILISECONDS_PER_MONTH * 12;
 ApplicationMain.main();
 })(typeof exports != "undefined" ? exports : typeof window != "undefined" ? window : typeof self != "undefined" ? self : this, typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);
-
-//# sourceMappingURL=lines.js.map

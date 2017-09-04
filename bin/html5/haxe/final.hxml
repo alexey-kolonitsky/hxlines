@@ -12,7 +12,6 @@
 -D lime-opengl
 -D openfl-html5
 -D lime-html5
--D debug
 -D verbose=1
 -D html5
 -D web
