@@ -1,4 +1,6 @@
 package view;
+import haxe.remoting.AsyncProxy;
+import haxe.remoting.HttpAsyncConnection;
 import model.UserData;
 import openfl.events.MouseEvent;
 import events.GameEvent;
@@ -10,8 +12,13 @@ import openfl.text.TextField;
 import openfl.display.Sprite;
 import openfl.display.Bitmap;
 import assets.GameAssets;
+
+class ScoresApi extends AsyncProxy<api.IHighScoreApi> {}
+
 class ResultBoard extends Sprite {
 
+	private var scoresApi:ScoresApi;
+	
     public function new() {
         super();
         imgBackground = new Bitmap(GameAssets.LEADBOARD_BITMAP);
@@ -63,8 +70,20 @@ class ResultBoard extends Sprite {
         addChild(timeTextField);
 
         imgBackground.addEventListener(MouseEvent.CLICK, background_mouseClickHandler);
+		
+		setupConnection();
+		scoresApi.getHightScores(StaticConfig.LEAD_BOARD_LINES, updateHighScores);
     }
+	
+	private function setupConnection() {
+		var connection = HttpAsyncConnection.urlConnect(StaticConfig.leadBoardURL);
+		connection.setErrorHandler(function (error) { trace (error); });
+		scoresApi = new ScoresApi(connection.api);
+	}
 
+	private function updateHighScores(scores:Array<UserData>):Void {
+		users = scores;
+	}
 
     //-----------------------------
     // users
@@ -169,7 +188,7 @@ class ResultBoard extends Sprite {
     public function updateRow(index:Int, user:UserData) {
         usernameTextFields[index].text = user.displayName;
         scoreTextFields[index].text = Std.string(user.score);
-        timeTextFields[index].text = Std.string(user.time);
+        timeTextFields[index].text = Std.string(TimeFormatter.format(user.time));
         trace("updateRow " + index + ": " + user, this);
     }
 
