@@ -43,6 +43,14 @@ class GameController implements IGameLoopHandler {
             return _game.duration;
         return 0;
     }
+	
+	public var score(get, never):Int;
+	private function get_score():Int {
+		if (_game != null) {
+			return _game.score;
+		}
+		return 0;
+	}
 
 
     //-------------------------------------------------------------------

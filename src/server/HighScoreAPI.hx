@@ -13,7 +13,7 @@ class HighScoreAPI implements IHighScoreApi {
 	}
 	
 	public function getHightScores(count:Int):Array<UserData> {
-		var result:List<{name:String, score:Int, time:Float}> = cast dbConnection.request("SELECT * FROM scores ORDER BY score Limit " + count).results();
+		var result:List<{name:String, score:Int, time:Float}> = cast dbConnection.request("SELECT * FROM scores ORDER BY score DESC Limit " + count).results();
 		var scores:Array<UserData> = new Array<UserData>();
 		for (userScore in result) {
 			var userData:UserData = new UserData();
@@ -26,9 +26,10 @@ class HighScoreAPI implements IHighScoreApi {
 	}
 	
 	public function submitHighScore(userData:UserData):Void {
-		dbConnection.request("INSERT INTO scores (name, score) VALUES ('" 
+		dbConnection.request("INSERT INTO scores (name, score, time) VALUES ('" 
 							+ dbConnection.escape(userData.displayName) + "', '" 
-							+ userData.score 
+							+ userData.score + "', '"
+							+ userData.time
 							+ "')");
 	}
 }

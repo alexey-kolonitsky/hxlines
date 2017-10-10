@@ -13,11 +13,7 @@ import openfl.display.Sprite;
 import openfl.display.Bitmap;
 import assets.GameAssets;
 
-class ScoresApi extends AsyncProxy<api.IHighScoreApi> {}
-
 class ResultBoard extends Sprite {
-
-	private var scoresApi:ScoresApi;
 	
     public function new() {
         super();
@@ -70,20 +66,7 @@ class ResultBoard extends Sprite {
         addChild(timeTextField);
 
         imgBackground.addEventListener(MouseEvent.CLICK, background_mouseClickHandler);
-		
-		setupConnection();
-		scoresApi.getHightScores(StaticConfig.LEAD_BOARD_LINES, updateHighScores);
     }
-	
-	private function setupConnection() {
-		var connection = HttpAsyncConnection.urlConnect(StaticConfig.leadBoardURL);
-		connection.setErrorHandler(function (error) { trace (error); });
-		scoresApi = new ScoresApi(connection.api);
-	}
-
-	private function updateHighScores(scores:Array<UserData>):Void {
-		users = scores;
-	}
 
     //-----------------------------
     // users
@@ -182,7 +165,7 @@ class ResultBoard extends Sprite {
             //TODO: Save result
         }
         scoreTextField.text = Std.string(_currentUser.score);
-        timeTextField.text = Std.string(_currentUser.time);
+        timeTextField.text = TimeFormatter.format(_currentUser.time);
     }
 
     public function updateRow(index:Int, user:UserData) {

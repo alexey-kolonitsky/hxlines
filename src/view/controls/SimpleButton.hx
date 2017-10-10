@@ -82,12 +82,16 @@ class SimpleButton extends Sprite {
     }
 
     private function mouseDownHandler(event:MouseEvent) {
-        _bitmap.alpha = 1.0;
+		if (_bitmap != null) {
+			_bitmap.alpha = 1.0;
+		}
         filters = [new DropShadowFilter(2, 90, 0x000000, 0.7, 4, 4)];
     }
 
     private function mouseUpHandler(event:MouseEvent) {
-        _bitmap.alpha = 1.0;
+		if (_bitmap != null) {
+			_bitmap.alpha = 1.0;
+		}
         filters = [new DropShadowFilter(2, 90, 0x000000, 0.7, 4, 4)];
     }
 
