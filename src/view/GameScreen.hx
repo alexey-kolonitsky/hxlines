@@ -197,9 +197,9 @@ class GameScreen extends Sprite {
         if (stage != null && gameOverPopup != null && _gameOverPopupVisibleChanged) {
             gameOverPopup.visible = _gameOverPopupVisible;
             if (_gameOverPopupVisible)
-				gameOverPopup.addEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
+                gameOverPopup.addEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
             else
-				gameOverPopup.removeEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
+                gameOverPopup.removeEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
             _gameOverPopupVisibleChanged = false;
         }
     }
