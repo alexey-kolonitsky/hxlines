@@ -64,7 +64,7 @@ class StaticConfig {
         return _sourceCodeURL;
     }
 
-    private static var _leadBoardURL:String = "";
+    private static var _leadBoardURL:String = "http://localhost/lines/index.php";
     public static var leadBoardURL(get,null):String;
 
     public static function get_leadBoardURL():String {

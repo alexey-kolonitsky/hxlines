@@ -1,4 +1,6 @@
 package view;
+import haxe.remoting.AsyncProxy;
+import haxe.remoting.HttpAsyncConnection;
 import model.UserData;
 import openfl.events.MouseEvent;
 import events.GameEvent;
@@ -10,8 +12,9 @@ import openfl.text.TextField;
 import openfl.display.Sprite;
 import openfl.display.Bitmap;
 import assets.GameAssets;
-class ResultBoard extends Sprite {
 
+class ResultBoard extends Sprite {
+	
     public function new() {
         super();
         imgBackground = new Bitmap(GameAssets.LEADBOARD_BITMAP);
@@ -64,7 +67,6 @@ class ResultBoard extends Sprite {
 
         imgBackground.addEventListener(MouseEvent.CLICK, background_mouseClickHandler);
     }
-
 
     //-----------------------------
     // users
@@ -163,13 +165,13 @@ class ResultBoard extends Sprite {
             //TODO: Save result
         }
         scoreTextField.text = Std.string(_currentUser.score);
-        timeTextField.text = Std.string(_currentUser.time);
+        timeTextField.text = TimeFormatter.format(_currentUser.time);
     }
 
     public function updateRow(index:Int, user:UserData) {
         usernameTextFields[index].text = user.displayName;
         scoreTextFields[index].text = Std.string(user.score);
-        timeTextFields[index].text = Std.string(user.time);
+        timeTextFields[index].text = Std.string(TimeFormatter.format(user.time));
         trace("updateRow " + index + ": " + user, this);
     }
 

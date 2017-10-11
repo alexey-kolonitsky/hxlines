@@ -1,4 +1,5 @@
 package view;
+import events.GameOverEvent;
 import model.GameState;
 import model.GameData;
 import view.controls.SimpleButton;
@@ -50,7 +51,7 @@ class GameScreen extends Sprite {
             addChild(field);
         }
 
-        gameOverPopup = new Bitmap(GameAssets.GAME_OVER_POPUP);
+        gameOverPopup = new GameOverScreen();
         gameOverPopupVisible = false;
         addChild(gameOverPopup);
 
@@ -81,6 +82,7 @@ class GameScreen extends Sprite {
             isFieldSelected = game.startIndex != -1;
         } else if (game.state == GameState.GAME_OVER) {
             gameFieldEnabled = false;
+			gameOverPopup.setScore(game.score, game.duration);
             gameOverPopupVisible = true;
         }
     }
@@ -115,7 +117,7 @@ class GameScreen extends Sprite {
     private var tfScore:TextField;
     private var imgDuration:Bitmap;
     private var imgScore:Bitmap;
-    private var gameOverPopup:Bitmap;
+    private var gameOverPopup:GameOverScreen;
     private var btnBack:Sprite;
 
     //---------------------------------
@@ -195,9 +197,9 @@ class GameScreen extends Sprite {
         if (stage != null && gameOverPopup != null && _gameOverPopupVisibleChanged) {
             gameOverPopup.visible = _gameOverPopupVisible;
             if (_gameOverPopupVisible)
-                addEventListener(MouseEvent.CLICK, gameOverPopup_clickHandler);
+                gameOverPopup.addEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
             else
-                removeEventListener(MouseEvent.CLICK, gameOverPopup_clickHandler);
+                gameOverPopup.removeEventListener(GameOverEvent.GAME_OVER, dispatchEvent);
             _gameOverPopupVisibleChanged = false;
         }
     }
@@ -223,10 +225,6 @@ class GameScreen extends Sprite {
 
     private function btnBack_clickHandler(event:MouseEvent) {
         dispatchEvent(new GameEvent(GameEvent.MENU, true));
-    }
-
-    private function gameOverPopup_clickHandler(event:MouseEvent) {
-        dispatchEvent(new GameEvent(GameEvent.GAME_OVER, true));
     }
 
     private function addedToStageHandler(event:Event) {
