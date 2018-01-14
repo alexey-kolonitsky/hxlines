@@ -3,9 +3,11 @@
 
     <meta title="Lines" package="com.mycompany.myproject" version="1.0.0" company="My Company" />
     <app main="Game" path="bin" file="lines" />
+    <icon path="icon.svg" />
 
     <window background="#333333" fps="60" />
-    <window width="500" height="565" unless="mobile" />
+    <window width="500" height="565" />
+    <window resizable="false" if="mobile" />
 
     <source path="src" />
 
