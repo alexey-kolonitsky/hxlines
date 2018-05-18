@@ -4,14 +4,15 @@ import haxe.remoting.HttpAsyncConnection;
 import model.UserData;
 import openfl.events.MouseEvent;
 import events.GameEvent;
-import config.StaticConfig;
+import StaticConfig;
 import flash.text.TextFieldType;
 import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
 import openfl.text.TextField;
 import openfl.display.Sprite;
 import openfl.display.Bitmap;
-import assets.GameAssets;
+import GameAssets;
+import GameAssets;
 
 class ResultBoard extends Sprite {
 	

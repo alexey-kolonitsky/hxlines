@@ -1,4 +1,4 @@
-package core.algo;
+package core;
 
 /**
  * Breadth-first search alghorithm.

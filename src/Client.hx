@@ -15,7 +15,7 @@ import openfl.text.TextFormatAlign;
 import openfl.Assets;
 import openfl.Lib;
 
-class Game extends Sprite {
+class Client extends Sprite {
 
     private var _inited:Bool = false;
     private var _controller:AppController;

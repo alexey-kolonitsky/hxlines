@@ -1,6 +1,6 @@
 package view;
-import assets.GameAssets;
-import config.StaticConfig;
+import GameAssets;
+import StaticConfig;
 import events.GameOverEvent;
 import openfl.display.Bitmap;
 import openfl.display.Sprite;
@@ -12,7 +12,7 @@ import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFieldType;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
-import view.controls.SimpleButton;
+import view.SimpleButton;
 
 class GameOverScreen extends Sprite {
 	

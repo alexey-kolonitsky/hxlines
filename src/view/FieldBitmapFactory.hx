@@ -1,8 +1,8 @@
 package view;
 import flash.geom.Matrix;
 import flash.display.Bitmap;
-import assets.GameAssets;
-import config.StaticConfig;
+import GameAssets;
+import StaticConfig;
 import openfl.display.BitmapData;
 
 class FieldBitmapFactory {

@@ -1,7 +1,7 @@
 package controller;
 
 import view.TimeFormatter;
-import config.StaticConfig;
+import StaticConfig;
 import core.GameField;
 import core.IGameLoopHandler;
 import events.GameEvent;

@@ -1,4 +1,4 @@
-package assets;
+package ;
 import openfl.display.BitmapData;
 import openfl.utils.Assets;
 class GameAssets {

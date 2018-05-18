@@ -1,4 +1,4 @@
-package config;
+package ;
 class StaticConfig {
 
     public static var APPLICATION_NAME(default,never):String = "Lines"; /* id */

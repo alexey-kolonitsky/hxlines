@@ -1,7 +1,7 @@
 package core;
 
-import core.algo.BreadthFirst;
-import config.StaticConfig;
+import core.BreadthFirst;
+import StaticConfig;
 
 /**
  * Array of GameFild's positions

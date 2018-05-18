@@ -1,4 +1,4 @@
-package view.controls;
+package view;
 import flash.text.TextFieldAutoSize;
 import openfl.text.TextFieldType;
 import openfl.text.TextFormat;

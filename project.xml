@@ -2,7 +2,7 @@
 <project>
 
     <meta title="Lines" package="com.mycompany.myproject" version="1.0.0" company="My Company" />
-    <app main="Game" path="bin" file="lines" />
+    <app main="Client" path="bin" file="lines" />
     <icon path="icon.svg" />
 
     <window background="#333333" fps="60" />

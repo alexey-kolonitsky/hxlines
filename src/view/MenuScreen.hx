@@ -1,14 +1,14 @@
 package view;
 
 import model.UserData;
-import view.controls.SimpleButton;
+import view.SimpleButton;
 import events.GameEvent;
-import config.StaticConfig;
+import StaticConfig;
 import openfl.events.Event;
 import openfl.display.Sprite;
 import openfl.events.MouseEvent;
 import openfl.display.Bitmap;
-import assets.GameAssets;
+import GameAssets;
 
 class MenuScreen extends Sprite {
 

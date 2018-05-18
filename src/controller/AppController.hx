@@ -10,10 +10,10 @@ import openfl.events.Event;
 import view.GameView;
 import core.GameLoop;
 import events.GameEvent;
-import config.StaticConfig;
+import StaticConfig;
 import model.GameData;
 
-class ScoresApi extends AsyncProxy<api.IHighScoreApi> {}
+class ScoresApi extends AsyncProxy<server.IHighScoreApi> {}
 
 class AppController {
 
@@ -86,7 +86,6 @@ class AppController {
     public function hideMenu() {
         _gameView.hideMenu();
     }
-
 
     private function createGameSession():GameData {
         //TODO: Resotre data from local storage
